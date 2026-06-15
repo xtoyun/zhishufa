@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>汉字视觉重心 · 增强版</title>
+<!-- Web fonts: 霞鹜文楷 (楷书/行楷风格) -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@callmebill/lxgw-wenkai-web@latest/style.css">
+<!-- Web fonts: 鸿雷拙书简体 (手写行书风格) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cn-fontsource-hong-lei-zhuo-shu-regular@latest/font.css">
+<!-- Web fonts: 鸿雷板书简体 (手绘板书写) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cn-fontsource-honglei-sim-regular@latest/font.css">
+<style>
+  /* ═══════════════════════════════════════════
+     CSS Variables & Theme
+     ═══════════════════════════════════════════ */
+  :root {
+    --paper: #f7f3ea;
+    --paper-deep: #ede6d8;
+    --ink: #1e1a12;
+    --ink-med: #4a3f2f;
+    --ink-light: #8a7d6b;
+    --seal: #b83a1f;
+    --seal-bright: #e85535;
+    --seal-ghost: rgba(184,58,31,0.08);
+    --gold: #a8872e;
+    --blue: #4a7cc9;
+    --border: #d8cfbc;
+    --border-light: #e5ddd0;
+    --shadow-sm: 0 1px 3px rgba(30,26,18,0.06);
+    --shadow-md: 0 4px 20px rgba(30,26,18,0.10);
+    --shadow-lg: 0 8px 40px rgba(30,26,18,0.14);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --font-display: "Noto Serif SC", "STKaiti", "KaiTi", "Kai", "Songti SC", serif;
+    --font-body: "Noto Serif SC", "Source Han Serif SC", "STSong", "SimSun", serif;
+    --font-mono: "SF Mono", "Cascadia Code", "JetBrains Mono", monospace;
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --marker-transition: 0.5s var(--ease-out-expo);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #e8e0d0;
+    background-image:
+      radial-gradient(ellipse at 25% 15%, rgba(170,150,110,0.12) 0%, transparent 55%),
+      radial-gradient(ellipse at 75% 85%, rgba(150,130,100,0.08) 0%, transparent 55%),
+      url("data:image/svg+xml,%3Csvg width='180' height='180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    min-height: 100vh;
+    font-family: var(--font-body);
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+
+  #app {
+    width: 100%;
+    max-width: 1160px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  /* ═══════════════════════════════════════════
+     Header
+     ═══════════════════════════════════════════ */
+  .header {
+    text-align: center;
+    padding: 1.5rem 0 0.5rem;
+  }
+  .header h1 {
+    font-size: 2.6rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+    font-family: var(--font-display);
+  }
+  .header .seal-mark {
+    display: inline-block;
+    width: 44px; height: 44px;
+    border: 2.5px solid var(--seal);
+    color: var(--seal);
+    font-size: 1.5rem;
+    line-height: 40px;
+    text-align: center;
+    font-family: var(--font-display);
+    transform: rotate(-3deg);
+    margin: 0 6px;
+    vertical-align: middle;
+  }
+  .header .subtitle {
+    font-size: 0.9rem;
+    color: var(--ink-light);
+    letter-spacing: 0.1em;
+    margin-top: 0.25rem;
+  }
+
+  /* ═══════════════════════════════════════════
+     Main Layout
+     ═══════════════════════════════════════════ */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 370px;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  /* ═══════════════════════════════════════════
+     Card Base
+     ═══════════════════════════════════════════ */
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='50' height='50' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.02'/%3E%3C/svg%3E");
+    pointer-events: none;
+    border-radius: var(--radius-md);
+    z-index: 0;
+  }
+  .card > * { position: relative; z-index: 1; }
+
+  .card-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .card-body { padding: 1.25rem; }
+
+  /* ═══════════════════════════════════════════
+     Character Panel (Left)
+     ═══════════════════════════════════════════ */
+  .char-panel {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 0.6rem;
+    width: 100%;
+    max-width: 480px;
+    margin-bottom: 1rem;
+  }
+  .char-input {
+    flex: 1;
+    padding: 0.7rem 1rem;
+    font-size: 1.1rem;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.55);
+    color: var(--ink);
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.25s, box-shadow 0.25s;
+  }
+  .char-input:focus {
+    border-color: var(--ink-med);
+    box-shadow: 0 0 0 3px rgba(74,63,47,0.08);
+  }
+  .char-input::placeholder { color: var(--ink-light); opacity: 0.45; }
+
+  .btn {
+    padding: 0.7rem 1.3rem;
+    border: 1.5px solid var(--ink-med);
+    border-radius: var(--radius-sm);
+    background: var(--ink);
+    color: var(--paper);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: all 0.25s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--ink-med); box-shadow: 0 2px 10px rgba(30,26,18,0.18); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink-med);
+    border-color: var(--border);
+  }
+  .btn-ghost:hover { background: rgba(30,26,18,0.04); border-color: var(--ink-med); }
+  .btn-sm { padding: 0.4rem 0.9rem; font-size: 0.8rem; }
+
+  .canvas-wrap {
+    position: relative;
+    background:
+      linear-gradient(rgba(180,160,120,0.10) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(180,160,120,0.10) 1px, transparent 1px);
+    background-size: 36px 36px;
+    background-position: center center;
+    border-radius: var(--radius-sm);
+    padding: 0.5rem;
+  }
+  .canvas-wrap canvas { display: block; }
+
+  /* ═══════════════════════════════════════════
+     Font Style Selector
+     ═══════════════════════════════════════════ */
+  .font-selector {
+    display: flex;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+  }
+  .font-sep {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+    margin: 0 0.25rem;
+    flex-shrink: 0;
+  }
+  .font-chip {
+    padding: 0.4rem 0.75rem;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    background: rgba(255,255,255,0.45);
+    font-family: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+    color: var(--ink-med);
+    letter-spacing: 0.04em;
+    transition: all 0.25s var(--ease-out-back);
+    user-select: none;
+    white-space: nowrap;
+  }
+  .font-chip.font-web {
+    border-style: dashed;
+    border-color: var(--gold);
+    background: rgba(168,135,46,0.06);
+  }
+  .font-chip.font-web:hover {
+    background: rgba(168,135,46,0.12);
+    border-color: var(--gold);
+  }
+  .font-chip:hover {
+    background: rgba(30,26,18,0.06);
+    border-color: var(--ink-med);
+    transform: translateY(-1px);
+  }
+  .font-chip.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+    border-style: solid;
+    box-shadow: var(--shadow-sm);
+  }
+  .font-chip .style-label {
+    display: block;
+    font-size: 0.68rem;
+    opacity: 0.65;
+    line-height: 1;
+    margin-top: 1px;
+  }
+
+  .mode-tabs {
+    display: flex;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+    background: rgba(0,0,0,0.03);
+    border-radius: var(--radius-sm);
+    padding: 0.25rem;
+  }
+  .mode-tab {
+    padding: 0.45rem 1rem;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+    border-radius: 4px;
+    color: var(--ink-light);
+    letter-spacing: 0.03em;
+    transition: all 0.25s;
+  }
+  .mode-tab.active {
+    background: var(--ink);
+    color: var(--paper);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .legend-row {
+    display: flex;
+    gap: 1.2rem;
+    margin-top: 0.75rem;
+    font-size: 0.78rem;
+    color: var(--ink-light);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .legend-dot {
+    display: inline-block;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    margin-right: 0.3rem;
+    vertical-align: middle;
+  }
+
+  /* ═══════════════════════════════════════════
+     Sliders
+     ═══════════════════════════════════════════ */
+  .slider-group { margin-bottom: 0.9rem; }
+  .slider-group:last-child { margin-bottom: 0; }
+  .slider-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.3rem;
+    font-size: 0.82rem;
+  }
+  .slider-label .name { color: var(--ink-med); }
+  .slider-label .val {
+    color: var(--ink);
+    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+  .slider-label .val.highlight { color: var(--seal); }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 5px;
+    border-radius: 3px;
+    background: linear-gradient(to right, var(--border-light), var(--ink-light));
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 2px solid var(--ink-med);
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-sm);
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    border-color: var(--ink);
+    box-shadow: var(--shadow-md);
+    transform: scale(1.1);
+  }
+
+  /* ═══════════════════════════════════════════
+     Metrics
+     ═══════════════════════════════════════════ */
+  .metric-table { width: 100%; }
+  .metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+    font-size: 0.84rem;
+  }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-key { color: var(--ink-light); }
+  .metric-val { font-weight: 600; color: var(--ink); font-family: var(--font-mono); font-size: 0.8rem; }
+  .metric-val.em { color: var(--seal); font-size: 0.9rem; }
+
+  .insight-box {
+    margin-top: 0.75rem;
+    padding: 0.75rem 0.9rem;
+    background: var(--seal-ghost);
+    border-left: 3px solid var(--seal);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 0.8rem;
+    color: var(--ink-med);
+    line-height: 1.65;
+  }
+
+  /* ═══════════════════════════════════════════
+     Density Mini Canvas
+     ═══════════════════════════════════════════ */
+  .density-mini {
+    width: 100%;
+    border-radius: var(--radius-sm);
+    display: block;
+  }
+
+  /* ═══════════════════════════════════════════
+     Presets
+     ═══════════════════════════════════════════ */
+  .preset-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+  }
+  .preset-chip {
+    width: 42px; height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.5);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 1.25rem;
+    font-family: var(--font-display);
+    transition: all 0.2s var(--ease-out-back);
+    user-select: none;
+  }
+  .preset-chip:hover {
+    background: rgba(30,26,18,0.06);
+    border-color: var(--ink-med);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+  .preset-chip.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* ═══════════════════════════════════════════
+     Comparison Strip
+     ═══════════════════════════════════════════ */
+  .compare-strip {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+  }
+  .compare-item {
+    flex: 1;
+    max-width: 200px;
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s var(--ease-out-expo);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+  }
+  .compare-item:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--ink-med);
+  }
+  .compare-item .compare-char {
+    font-size: 4rem;
+    font-family: var(--font-display);
+    color: var(--ink);
+    position: relative;
+    display: inline-block;
+  }
+  .compare-item .compare-info {
+    font-size: 0.75rem;
+    color: var(--ink-light);
+    margin-top: 0.4rem;
+    line-height: 1.5;
+  }
+  .compare-item .compare-dot {
+    position: absolute;
+    width: 10px; height: 10px;
+    background: var(--seal);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: all var(--marker-transition);
+    box-shadow: 0 0 8px rgba(184,58,31,0.4);
+    pointer-events: none;
+  }
+
+  /* ═══════════════════════════════════════════
+     Transitions
+     ═══════════════════════════════════════════ */
+  .fade-enter-active, .fade-leave-active {
+    transition: opacity 0.35s var(--ease-out-expo);
+  }
+  .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+  .slide-up-enter-active, .slide-up-leave-active {
+    transition: all 0.4s var(--ease-out-expo);
+  }
+  .slide-up-enter-from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  .slide-up-leave-to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  /* ═══════════════════════════════════════════
+     Responsive
+     ═══════════════════════════════════════════ */
+  @media (max-width: 920px) {
+    .main-grid {
+      grid-template-columns: 1fr;
+    }
+    .compare-strip {
+      flex-wrap: wrap;
+    }
+    .compare-item {
+      max-width: 140px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- ═══════ Header ═══════ -->
+  <header class="header">
+    <h1>汉字<span class="seal-mark">心</span>视觉重心</h1>
+    <p class="subtitle">基于「分量 · 距离 · 斜度」三要素 · 楷宋黑仿明多字体切换 · 实时调节参数 · 多字对比</p>
+  </header>
+
+  <!-- ═══════ Main Grid ═══════ -->
+  <div class="main-grid">
+    <!-- Left: Character Canvas -->
+    <div class="card char-panel">
+      <div class="input-row">
+        <input
+          type="text"
+          class="char-input"
+          v-model="currentChar"
+          @input="onCharInput"
+          placeholder="输入一个汉字，如：永、重、我、飞…"
+          maxlength="4"
+        >
+        <button class="btn btn-ghost btn-sm" @click="randomChar" title="随机汉字">🎲</button>
+      </div>
+
+      <div class="canvas-wrap">
+        <canvas id="mainCanvas" width="480" height="480"></canvas>
+      </div>
+
+      <!-- Font style selector -->
+      <div class="font-selector">
+        <template v-for="f in fontStyles" :key="f.key">
+          <span v-if="f.isSep" class="font-sep"></span>
+          <button
+            v-else
+            class="font-chip"
+            :class="{ active: currentFont === f.key, 'font-web': f.isWeb }"
+            @click="currentFont = f.key"
+            :title="f.name + ' — ' + f.desc"
+          >
+            {{ f.label }}
+            <span class="style-label">{{ f.name }}</span>
+          </button>
+        </template>
+      </div>
+
+      <!-- Mode tabs -->
+      <div class="mode-tabs">
+        <button
+          v-for="m in modes"
+          :key="m.key"
+          class="mode-tab"
+          :class="{ active: currentMode === m.key }"
+          @click="currentMode = m.key"
+        >{{ m.label }}</button>
+      </div>
+
+      <!-- Legend -->
+      <div class="legend-row">
+        <span><span class="legend-dot" style="background:var(--seal)"></span>视觉重心</span>
+        <span v-show="currentMode === 'comparison'"><span class="legend-dot" style="background:var(--blue)"></span>物理质心</span>
+        <span><span class="legend-dot" style="border:1px dashed rgba(0,0,0,0.35);background:transparent"></span>几何中心</span>
+      </div>
+
+      <!-- Presets -->
+      <div class="preset-grid">
+        <span
+          v-for="c in presets"
+          :key="c"
+          class="preset-chip"
+          :class="{ active: displayChar === c }"
+          @click="selectPreset(c)"
+        >{{ c }}</span>
+      </div>
+    </div>
+
+    <!-- Right: Controls -->
+    <div style="display:flex;flex-direction:column;gap:1.25rem;">
+      <!-- Metrics Card -->
+      <div class="card">
+        <div class="card-header">📐 重心数据 · {{ displayChar }} <span style="font-weight:400;color:var(--ink-light);font-size:0.78rem;">· {{ currentFontLabel }}</span></div>
+        <div class="card-body" style="padding-top:0.75rem;">
+          <div class="metric-table">
+            <div class="metric-row">
+              <span class="metric-key">笔画像素</span>
+              <span class="metric-val">{{ result ? result.pixelCount.toLocaleString() : '--' }}</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-key">字符尺寸</span>
+              <span class="metric-val">{{ result ? result.charWidth + '×' + result.charHeight : '--' }}</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-key">几何中心</span>
+              <span class="metric-val">{{ result ? '(' + result.geoCX + ', ' + result.geoCY + ')' : '--' }}</span>
+            </div>
+            <div class="metric-row" v-show="currentMode === 'comparison'">
+              <span class="metric-key">物理质心</span>
+              <span class="metric-val" style="color:var(--blue)">{{ result ? '(' + result.rawCX + ', ' + result.rawCY + ')' : '--' }}</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-key">视觉重心</span>
+              <span class="metric-val em">{{ result ? '(' + result.visualCX + ', ' + result.visualCY + ')' : '--' }}</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-key">偏移 (Δx, Δy)</span>
+              <span class="metric-val em">{{ offsetStr }}</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-key">方向</span>
+              <span class="metric-val">{{ directionStr }}</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-key">上:下 / 左:右</span>
+              <span class="metric-val">{{ quadrantStr }}</span>
+            </div>
+          </div>
+          <div class="insight-box" v-if="result">
+            <strong>解读：</strong>{{ result.insight }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Sliders Card -->
+      <div class="card">
+        <div class="card-header">🎚️ 参数调节</div>
+        <div class="card-body" style="padding-top:0.6rem;">
+          <div class="slider-group">
+            <div class="slider-label">
+              <span class="name">笔画分量权重</span>
+              <span class="val highlight">{{ sliders.weightFactor }}%</span>
+            </div>
+            <input type="range" min="0" max="100" step="1" v-model.number="sliders.weightFactor">
+          </div>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span class="name">中宫收紧权重</span>
+              <span class="val highlight">{{ sliders.densityFactor }}%</span>
+            </div>
+            <input type="range" min="0" max="100" step="1" v-model.number="sliders.densityFactor">
+          </div>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span class="name">斜度影响权重</span>
+              <span class="val highlight">{{ sliders.slantFactor }}%</span>
+            </div>
+            <input type="range" min="0" max="100" step="1" v-model.number="sliders.slantFactor">
+          </div>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span class="name">视觉偏上偏差</span>
+              <span class="val">{{ sliders.upBias.toFixed(1) }}%</span>
+            </div>
+            <input type="range" min="0" max="15" step="0.1" v-model.number="sliders.upBias">
+          </div>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span class="name">视觉偏右偏差</span>
+              <span class="val">{{ sliders.rightBias.toFixed(1) }}%</span>
+            </div>
+            <input type="range" min="-5" max="10" step="0.1" v-model.number="sliders.rightBias">
+          </div>
+          <div class="insight-box" style="margin-top:0.75rem;">
+            <strong>默认值</strong>源于书法理论：偏上 6%（人眼视觉中心偏高）、偏右 2.5%（心理学"先小后大"节奏感）。
+            拖动滑块观察重心实时变化。
+          </div>
+        </div>
+      </div>
+
+      <!-- Density Mini -->
+      <div class="card">
+        <div class="card-header">🔬 中宫热力</div>
+        <div class="card-body" style="padding-top:0.5rem;">
+          <canvas id="densityMini" class="density-mini" width="280" height="280"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ Comparison Strip ═══════ -->
+  <div class="card" style="padding:1.25rem;">
+    <div class="card-header" style="padding:0 0 0.75rem 0;border-bottom:1px solid var(--border-light);">
+      🔍 多字对比 <span style="font-weight:400;color:var(--ink-light);font-size:0.8rem;">— 点击切换主视图</span>
+    </div>
+    <div class="compare-strip">
+      <div
+        v-for="(item, idx) in compareData"
+        :key="idx"
+        class="compare-item"
+        @click="selectPreset(item.char)"
+      >
+        <div style="position:relative;display:inline-block;">
+          <span class="compare-char" :style="{ fontFamily: currentFontStack }">{{ item.char }}</span>
+          <span
+            class="compare-dot"
+            :style="{
+              left: item.dotX + '%',
+              top: item.dotY + '%',
+            }"
+          ></span>
+        </div>
+        <div class="compare-info">
+          {{ item.direction }}<br>
+          偏移 {{ item.offset }}px
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     Vue 3 CDN + App
+     ═══════════════════════════════════════════ -->
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script>
+(function() {
+  const { createApp, ref, reactive, computed, watch, nextTick } = Vue;
+
+  // ── Constants ──────────────────────────
+  const CANVAS_SIZE = 480;
+  const FONT_SIZE = 340;
+  const GRID = 28;
+  const CELL = CANVAS_SIZE / GRID;
+
+  const PRESETS = [
+    '永','重','我','飞','不','中','大','小','人','入',
+    '七','戈','三','川','刘','盂','主','帝','盏','才',
+    '耳','申','束','家','风','龙','为','之','也','子',
+    '女','文','千','万','正','匀',
+  ];
+
+  const MODES = [
+    { key: 'visual', label: '🎯 视觉重心' },
+    { key: 'comparison', label: '◎ 对比模式' },
+    { key: 'density', label: '⊞ 密度热力' },
+  ];
+
+  // Available font styles with system font stacks
+  const FONT_STYLES = [
+    // ── Web fonts (loaded via CDN) ────────
+    {
+      key: 'wenkai', label: '楷', name: '霞鹜文楷', desc: '开源楷体，手写感强，免费商用',
+      stack: '"LXGW WenKai","STKaiti","KaiTi",serif',
+      isWeb: true,
+    },
+    {
+      key: 'zhuoshu', label: '拙', name: '鸿雷拙书', desc: '手写行书风格，拙朴自然',
+      stack: '"HongLeiZhuoShu","STKaiti","KaiTi",serif',
+      isWeb: true,
+    },
+    {
+      key: 'banshu', label: '书', name: '鸿雷板书', desc: '手绘板书写体，随性洒脱',
+      stack: '"honglei sim","HongLeiZhuoShu","STKaiti",serif',
+      isWeb: true,
+    },
+    // ── System fonts ──────────────────────
+    { key: '_sep', label: '', name: '', desc: '', stack: '', isSep: true },
+    {
+      key: 'kai', label: '楷', name: '楷书', desc: '笔画起收分明，接近手写',
+      stack: '"STKaiti","KaiTi","SimKai","Noto Serif SC","Kai","serif"',
+      isWeb: false,
+    },
+    {
+      key: 'song', label: '宋', name: '宋体', desc: '横细竖粗，印刷正体',
+      stack: '"STSong","SimSun","Songti SC","Noto Serif SC","NSimSun",serif',
+    },
+    {
+      key: 'hei', label: '黑', name: '黑体', desc: '笔画均匀，现代无衬线',
+      stack: '"SimHei","STHeiti","Heiti SC","Microsoft YaHei","Noto Sans SC",sans-serif',
+    },
+    {
+      key: 'fangsong', label: '仿', name: '仿宋', desc: '楷体骨架，宋体笔形',
+      stack: '"FangSong","STFangsong","FangSong_GB2312","Noto Serif SC",serif',
+    },
+    {
+      key: 'ming', label: '明', name: '明体', desc: '台湾标准印刷体',
+      stack: '"PMingLiU","MingLiU","MingLiU_HKSCS","Noto Serif SC",serif',
+    },
+    {
+      key: 'noto', label: '思', name: '思源宋', desc: 'Google开源，跨平台一致',
+      stack: '"Noto Serif SC","Source Han Serif SC","Songti SC",serif',
+    },
+  ];
+
+  // ── Offscreen canvas ────────────────────
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = CANVAS_SIZE;
+  offCanvas.height = CANVAS_SIZE;
+  const offCtx = offCanvas.getContext('2d');
+
+  // ── Core Analysis (pure function) ──────
+  function analyzeChar(char, sliders, fontStack) {
+    offCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    offCtx.fillStyle = '#000000';
+    offCtx.font = `${FONT_SIZE}px ${fontStack}`;
+    offCtx.textAlign = 'center';
+    offCtx.textBaseline = 'middle';
+    offCtx.fillText(char, CANVAS_SIZE / 2, CANVAS_SIZE / 2);
+
+    const imageData = offCtx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    const pixels = imageData.data;
+
+    // Find bounding box & collect dark pixels
+    let minX = CANVAS_SIZE, maxX = 0, minY = CANVAS_SIZE, maxY = 0;
+    const darkPixels = [];
+
+    for (let y = 0; y < CANVAS_SIZE; y++) {
+      for (let x = 0; x < CANVAS_SIZE; x++) {
+        const idx = (y * CANVAS_SIZE + x) * 4;
+        const alpha = pixels[idx + 3];
+        if (alpha > 60) {
+          const darkness = Math.min(alpha / 255, 1);
+          const weight = darkness * (1 - pixels[idx] / 255);
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+          darkPixels.push({ x, y, weight });
+        }
+      }
+    }
+
+    if (darkPixels.length === 0) return null;
+
+    const charWidth = maxX - minX;
+    const charHeight = maxY - minY;
+    const geoCX = (minX + maxX) / 2;
+    const geoCY = (minY + maxY) / 2;
+
+    // 1. Raw centroid (分量)
+    let sumW = 0, sumWX = 0, sumWY = 0;
+    for (const p of darkPixels) {
+      sumW += p.weight;
+      sumWX += p.weight * p.x;
+      sumWY += p.weight * p.y;
+    }
+    const rawCX = sumWX / sumW;
+    const rawCY = sumWY / sumW;
+
+    // 2. Density grid (距离 / 中宫收紧)
+    const densityGrid = new Float32Array(GRID * GRID);
+    for (const p of darkPixels) {
+      const gx = Math.min(Math.floor(p.x / CELL), GRID - 1);
+      const gy = Math.min(Math.floor(p.y / CELL), GRID - 1);
+      densityGrid[gy * GRID + gx] += p.weight;
+    }
+    let maxDensity = 0;
+    for (let i = 0; i < densityGrid.length; i++) {
+      if (densityGrid[i] > maxDensity) maxDensity = densityGrid[i];
+    }
+
+    // Density-weighted center
+    let sumDW = 0, sumDWX = 0, sumDWY = 0;
+    for (const p of darkPixels) {
+      const gx = Math.min(Math.floor(p.x / CELL), GRID - 1);
+      const gy = Math.min(Math.floor(p.y / CELL), GRID - 1);
+      const localD = maxDensity > 0 ? densityGrid[gy * GRID + gx] / maxDensity : 1;
+      const dw = p.weight * (1 + localD * 2.0);
+      sumDW += dw;
+      sumDWX += dw * p.x;
+      sumDWY += dw * p.y;
+    }
+    const densityCX = sumDWX / sumDW;
+    const densityCY = sumDWY / sumDW;
+
+    // 3. Slant analysis (斜度) — Sobel-like gradient
+    let slantOX = 0, slantOY = 0, slantN = 0;
+    for (let i = 0; i < darkPixels.length; i += 5) {
+      const p = darkPixels[i];
+      if (p.x <= 1 || p.x >= CANVAS_SIZE - 1 || p.y <= 1 || p.y >= CANVAS_SIZE - 1) continue;
+
+      const iT = ((p.y - 1) * CANVAS_SIZE + p.x) * 4;
+      const iB = ((p.y + 1) * CANVAS_SIZE + p.x) * 4;
+      const iL = (p.y * CANVAS_SIZE + (p.x - 1)) * 4;
+      const iR = (p.y * CANVAS_SIZE + (p.x + 1)) * 4;
+
+      const gx = (pixels[iR] - pixels[iL]) / 2;
+      const gy = (pixels[iB] - pixels[iT]) / 2;
+      const mag = Math.sqrt(gx * gx + gy * gy);
+
+      if (mag > 3) {
+        if (Math.abs(gy) < Math.abs(gx) * 0.7) {
+          slantOY += Math.sign(gy) * mag * 0.3;
+          slantOX -= Math.sign(gy) * mag * 0.15;
+        } else if (Math.abs(gx) < Math.abs(gy) * 0.7) {
+          slantOX += Math.sign(gx) * mag * 0.3;
+        } else {
+          slantOX += Math.sign(gx) * mag * 0.2;
+          slantOY -= Math.sign(gy) * mag * 0.2;
+        }
+        slantN++;
+      }
+    }
+    const avgSlantX = slantN > 0 ? slantOX / slantN : 0;
+    const avgSlantY = slantN > 0 ? slantOY / slantN : 0;
+
+    // 4. Apply slider weights
+    const wW = sliders.weightFactor / 100;    // 0..1
+    const wD = sliders.densityFactor / 100;
+    const wS = sliders.slantFactor / 100;
+
+    // Blend raw centroid → density centroid based on weightFactor
+    const blendedCX = rawCX + (densityCX - rawCX) * wW;
+    const blendedCY = rawCY + (densityCY - rawCY) * wW;
+
+    // Apply density shift
+    const densityShiftX = (densityCX - blendedCX) * wD;
+    const densityShiftY = (densityCY - blendedCY) * wD;
+
+    // Apply slant shift
+    const slantShiftX = avgSlantX * wS;
+    const slantShiftY = avgSlantY * wS;
+
+    // Perceptual bias
+    const upBiasPx = charHeight * (sliders.upBias / 100);
+    const rightBiasPx = charWidth * (sliders.rightBias / 100);
+
+    const visualCX = blendedCX + densityShiftX + slantShiftX + rightBiasPx;
+    const visualCY = blendedCY + densityShiftY + slantShiftY - upBiasPx;
+
+    // 5. Quadrant distribution
+    const quads = { tl: 0, tr: 0, bl: 0, br: 0 };
+    for (const p of darkPixels) {
+      if (p.x < geoCX) { if (p.y < geoCY) quads.tl += p.weight; else quads.bl += p.weight; }
+      else { if (p.y < geoCY) quads.tr += p.weight; else quads.br += p.weight; }
+    }
+    const totalQ = quads.tl + quads.tr + quads.bl + quads.br;
+    const topPct = ((quads.tl + quads.tr) / totalQ * 100).toFixed(1);
+    const botPct = ((quads.bl + quads.br) / totalQ * 100).toFixed(1);
+    const leftPct = ((quads.tl + quads.bl) / totalQ * 100).toFixed(1);
+    const rightPct = ((quads.tr + quads.br) / totalQ * 100).toFixed(1);
+
+    // 6. Insight text
+    const ox = visualCX - geoCX;
+    const oy = visualCY - geoCY;
+    let insight = '';
+    if (Math.abs(ox) < 5 && Math.abs(oy) < 5) {
+      insight = '重心接近几何中心，结构高度对称。可尝试增加"中宫收紧"权重观察变化。';
+    } else if (oy < -12 && Math.abs(ox) < 8) {
+      insight = '重心显著偏上，符合"上紧下松"的审美传统。启功云："中心部位笔画紧凑，而后向四方扩展，必然好看。"';
+    } else if (ox > 10) {
+      insight = '重心偏右，符合心理学"先小后大"的节奏感。姜夔《续书谱》谓顺其"真态"自然。';
+    } else if (ox < -8) {
+      insight = '重心偏左，可能是笔画天然分布使然。如"劉"字左重右轻，顺其自然即是美。';
+    } else {
+      insight = '重心偏移反映了笔画分布的自然态势。书法追求"不相等的东西获得相等"的杆秤式动态平衡。';
+    }
+
+    return {
+      char, charWidth, charHeight,
+      geoCX, geoCY,
+      rawCX, rawCY,
+      visualCX, visualCY,
+      pixelCount: darkPixels.length,
+      offsetX: ox, offsetY: oy,
+      topPct, botPct, leftPct, rightPct,
+      insight,
+      densityGrid, maxDensity,
+      // For comparison strip
+      dotX: ((visualCX - minX) / charWidth * 80 + 10),
+      dotY: ((visualCY - minY) / charHeight * 80 + 10),
+    };
+  }
+
+  // ── Drawing functions ───────────────────
+  function drawMain(ctx, char, result, mode, fontStack) {
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    ctx.fillStyle = 'rgba(250,247,240,0.4)';
+    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    // Density heatmap background
+    if (mode === 'density' && result.densityGrid) {
+      for (let gy = 0; gy < GRID; gy++) {
+        for (let gx = 0; gx < GRID; gx++) {
+          const d = result.maxDensity > 0 ? result.densityGrid[gy * GRID + gx] / result.maxDensity : 0;
+          if (d > 0.04) {
+            const r = Math.min(255, 200 + d * 55);
+            const g = Math.min(255, 100 - d * 80);
+            const b = Math.min(255, 40 - d * 40);
+            ctx.fillStyle = `rgba(${r},${g},${b},${d * 0.5})`;
+            ctx.fillRect(gx * CELL, gy * CELL, CELL, CELL);
+          }
+        }
+      }
+    }
+
+    // Character
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = `${FONT_SIZE}px ${fontStack}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(char, CANVAS_SIZE / 2, CANVAS_SIZE / 2);
+
+    if (mode === 'density') return;
+
+    const { geoCX, geoCY, rawCX, rawCY, visualCX, visualCY } = result;
+
+    // Geometric center
+    ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 8]);
+    ctx.beginPath();
+    ctx.moveTo(geoCX - 16, geoCY); ctx.lineTo(geoCX + 16, geoCY);
+    ctx.moveTo(geoCX, geoCY - 16); ctx.lineTo(geoCX, geoCY + 16);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath();
+    ctx.moveTo(geoCX, geoCY - 5);
+    ctx.lineTo(geoCX + 5, geoCY);
+    ctx.lineTo(geoCX, geoCY + 5);
+    ctx.lineTo(geoCX - 5, geoCY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Raw centroid (comparison mode)
+    if (mode === 'comparison') {
+      ctx.fillStyle = '#4a7cc9';
+      ctx.beginPath();
+      ctx.arc(rawCX, rawCY, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(74,124,201,0.45)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(rawCX, rawCY, 11, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = '#3b6dcf';
+      ctx.font = '11px "Noto Serif SC",serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('物理质心', rawCX + 14, rawCY - 6);
+
+      // Connector
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 5]);
+      ctx.beginPath();
+      ctx.moveTo(rawCX, rawCY);
+      ctx.lineTo(visualCX, visualCY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Visual center glow
+    const glow = ctx.createRadialGradient(visualCX, visualCY, 5, visualCX, visualCY, 20);
+    glow.addColorStop(0, 'rgba(184,58,31,0.5)');
+    glow.addColorStop(0.5, 'rgba(184,58,31,0.12)');
+    glow.addColorStop(1, 'rgba(184,58,31,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(visualCX, visualCY, 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Main dot
+    ctx.fillStyle = '#b83a1f';
+    ctx.beginPath();
+    ctx.arc(visualCX, visualCY, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#e85535';
+    ctx.beginPath();
+    ctx.arc(visualCX, visualCY, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Outer ring
+    ctx.strokeStyle = '#b83a1f';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(visualCX, visualCY, 13, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Crosshair
+    ctx.strokeStyle = 'rgba(184,58,31,0.55)';
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(visualCX - 24, visualCY); ctx.lineTo(visualCX + 24, visualCY);
+    ctx.moveTo(visualCX, visualCY - 24); ctx.lineTo(visualCX, visualCY + 24);
+    ctx.stroke();
+
+    // Label
+    ctx.fillStyle = '#b83a1f';
+    ctx.font = 'bold 13px "Noto Serif SC","KaiTi",serif';
+    const lx = visualCX > CANVAS_SIZE / 2 ? visualCX - 95 : visualCX + 18;
+    const ly = visualCY > CANVAS_SIZE / 2 ? visualCY - 18 : visualCY + 28;
+    ctx.textAlign = 'left';
+    ctx.fillText('视觉重心', lx, ly);
+  }
+
+  function drawDensityMini(ctx, result) {
+    const size = 280;
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = '#faf7f0';
+    ctx.fillRect(0, 0, size, size);
+
+    if (!result) return;
+
+    const { densityGrid, maxDensity, visualCX, visualCY, rawCX, rawCY } = result;
+    const scale = size / CANVAS_SIZE;
+
+    for (let gy = 0; gy < GRID; gy++) {
+      for (let gx = 0; gx < GRID; gx++) {
+        const d = maxDensity > 0 ? densityGrid[gy * GRID + gx] / maxDensity : 0;
+        if (d > 0.02) {
+          const r = Math.min(255, Math.floor(140 + d * 115));
+          const g = Math.min(255, Math.floor(70 + d * 80 * (1 - d)));
+          const b = Math.min(255, Math.floor(35 + d * 40 * (1 - d)));
+          ctx.fillStyle = `rgba(${r},${g},${b},${0.25 + d * 0.75})`;
+          ctx.fillRect(gx * CELL * scale, gy * CELL * scale, CELL * scale + 1, CELL * scale + 1);
+        }
+      }
+    }
+
+    // Visual center
+    const vx = visualCX * scale, vy = visualCY * scale;
+    ctx.fillStyle = '#b83a1f';
+    ctx.beginPath(); ctx.arc(vx, vy, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#b83a1f'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(vx, vy, 8, 0, Math.PI * 2); ctx.stroke();
+
+    // Raw centroid
+    if (Math.abs(rawCX - visualCX) > 3 || Math.abs(rawCY - visualCY) > 3) {
+      ctx.fillStyle = '#4a7cc9';
+      ctx.beginPath(); ctx.arc(rawCX * scale, rawCY * scale, 3.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Legend
+    ctx.fillStyle = '#8a7d6b';
+    ctx.font = '10px "Noto Serif SC",serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('低', 55, size - 6);
+    ctx.textAlign = 'left';
+    ctx.fillText('高', size - 25, size - 6);
+    const grad = ctx.createLinearGradient(65, 0, size - 30, 0);
+    grad.addColorStop(0, 'rgba(140,120,80,0.3)');
+    grad.addColorStop(0.5, 'rgba(200,140,60,0.6)');
+    grad.addColorStop(1, 'rgba(220,80,40,0.8)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(65, size - 12, size - 95, 3);
+  }
+
+  // ── Vue App ─────────────────────────────
+  createApp({
+    setup() {
+      // ── Reactive State ──────────────────
+      const currentChar = ref('永');
+      const displayChar = ref('永');
+      const currentMode = ref('visual');
+      const currentFont = ref('wenkai');
+      const result = ref(null);
+      const sliders = reactive({
+        weightFactor: 70,
+        densityFactor: 60,
+        slantFactor: 40,
+        upBias: 6.0,
+        rightBias: 2.5,
+      });
+      const compareData = ref([]);
+      const presets = ref(PRESETS);
+      const modes = ref(MODES);
+      const fontStyles = ref(FONT_STYLES);
+
+      // Helper: get font stack string for current key
+      function getFontStack(key) {
+        const found = FONT_STYLES.find(f => f.key === key);
+        return found ? found.stack : FONT_STYLES[0].stack;
+      }
+
+      // Helper: ensure web font is loaded for Canvas
+      async function ensureFontLoaded(fontStack) {
+        const family = fontStack.split(',')[0].replace(/["']/g, '');
+        try {
+          // Check if font is already available
+          if (document.fonts.check(`16px "${family}"`)) return;
+          // Load it
+          await document.fonts.load(`16px "${family}"`);
+        } catch (e) {
+          // Fallback silently — browser will use next font in stack
+        }
+      }
+
+      // Debounce timer
+      let debounceTimer = null;
+
+      // ── Computed ────────────────────────
+      const offsetStr = computed(() => {
+        if (!result.value) return '--';
+        const ox = result.value.offsetX;
+        const oy = result.value.offsetY;
+        return `${ox > 0 ? '+' : ''}${ox.toFixed(1)}, ${oy > 0 ? '+' : ''}${oy.toFixed(1)}`;
+      });
+
+      const directionStr = computed(() => {
+        if (!result.value) return '--';
+        const ox = result.value.offsetX;
+        const oy = result.value.offsetY;
+        const h = ox > 3 ? '偏右' : ox < -3 ? '偏左' : '居中';
+        const v = oy > 3 ? '偏下' : oy < -3 ? '偏上' : '居中';
+        return `${h} · ${v}`;
+      });
+
+      const quadrantStr = computed(() => {
+        if (!result.value) return '--';
+        return `${result.value.topPct}:${result.value.botPct} / ${result.value.leftPct}:${result.value.rightPct}`;
+      });
+
+      const currentFontLabel = computed(() => {
+        const found = FONT_STYLES.find(f => f.key === currentFont.value);
+        return found ? found.name : '楷书';
+      });
+
+      const currentFontStack = computed(() => {
+        return getFontStack(currentFont.value);
+      });
+
+      // ── Core: analyze & draw ─────────────
+      async function doAnalysis() {
+        const char = displayChar.value;
+        const fontStack = getFontStack(currentFont.value);
+
+        // Wait for web fonts to load before canvas rendering
+        await ensureFontLoaded(fontStack);
+
+        const r = analyzeChar(char, { ...sliders }, fontStack);
+        result.value = r;
+
+        nextTick(() => {
+          if (!r) return;
+
+          const mainCanvas = document.getElementById('mainCanvas');
+          if (mainCanvas) {
+            const ctx = mainCanvas.getContext('2d');
+            drawMain(ctx, char, r, currentMode.value, fontStack);
+          }
+
+          const densityMini = document.getElementById('densityMini');
+          if (densityMini) {
+            const ctx = densityMini.getContext('2d');
+            drawDensityMini(ctx, r);
+          }
+        });
+
+        return r;
+      }
+
+      function updateCompareStrip() {
+        const compChars = ['重', '飞', '不', '中'];
+        const fontStack = getFontStack(currentFont.value);
+        const data = [];
+        for (const c of compChars) {
+          if (c === displayChar.value) continue;
+          const r = analyzeChar(c, { ...sliders }, fontStack);
+          if (r) {
+            data.push({
+              char: c,
+              dotX: r.dotX,
+              dotY: r.dotY,
+              direction: r.offsetX > 3 ? '偏右' : r.offsetX < -3 ? '偏左' : '中'
+                       + (r.offsetY > 3 ? '偏下' : r.offsetY < -3 ? '偏上' : ''),
+              offset: Math.sqrt(r.offsetX ** 2 + r.offsetY ** 2).toFixed(1),
+            });
+          }
+          if (data.length >= 3) break;
+        }
+        compareData.value = data;
+      }
+
+      // ── Actions ──────────────────────────
+      function onCharInput() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          const char = [...currentChar.value][0];
+          if (char) {
+            displayChar.value = char;
+            doAnalysis();
+            updateCompareStrip();
+          }
+        }, 150);
+      }
+
+      function selectPreset(c) {
+        currentChar.value = c;
+        displayChar.value = c;
+        doAnalysis();
+        updateCompareStrip();
+      }
+
+      function randomChar() {
+        const random = PRESETS[Math.floor(Math.random() * PRESETS.length)];
+        selectPreset(random);
+      }
+
+      // ── Watchers ────────────────────────
+      watch(currentMode, () => {
+        if (result.value) {
+          const mainCanvas = document.getElementById('mainCanvas');
+          if (mainCanvas) {
+            const fontStack = getFontStack(currentFont.value);
+            drawMain(mainCanvas.getContext('2d'), displayChar.value, result.value, currentMode.value, fontStack);
+          }
+        }
+      });
+
+      // Re-analyze when font changes
+      watch(currentFont, () => {
+        doAnalysis();
+        updateCompareStrip();
+      });
+
+      // Re-analyze when sliders change
+      watch(
+        () => ({
+          wf: sliders.weightFactor,
+          df: sliders.densityFactor,
+          sf: sliders.slantFactor,
+          ub: sliders.upBias,
+          rb: sliders.rightBias,
+        }),
+        () => {
+          doAnalysis();
+          updateCompareStrip();
+        }
+      );
+
+      // ── Init ─────────────────────────────
+      nextTick(() => {
+        doAnalysis();
+        updateCompareStrip();
+      });
+
+      return {
+        currentChar,
+        displayChar,
+        currentMode,
+        currentFont,
+        result,
+        sliders,
+        compareData,
+        presets,
+        modes,
+        fontStyles,
+        offsetStr,
+        directionStr,
+        quadrantStr,
+        currentFontLabel,
+        currentFontStack,
+        onCharInput,
+        selectPreset,
+        randomChar,
+      };
+    }
+  }).mount('#app');
+})();
+</script>
+</body>
+</html>
